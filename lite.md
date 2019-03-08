@@ -388,15 +388,13 @@ dd|Delete_Device|删除目标设备|219|419
 
 -----------------------------------
 
-## 通讯流程(电表)
+## 使用方法
 
-1. 上位机传数据fromAddress给Lite
-2. Lite分配本地Modbus地址
-3. Lite将fromAddress与toAddress配对存储到本地数据库或文件
-4. Lite将数据toAddress传回给上位机
-
-重复fromAddress的问题
-判断40001:2是否跟2的问题 左没有2 右有2
+1. 将上位机的IP设为[192.168.0.xxx]，将上位机的网口与Lite的网口通过网线直联
+2. 上位机浏览器打开[192.168.0.26]，输入密码进入Lite的初始化网页
+3. 修改Lite的IP地址、Modbus设置以及MQTT设置等
+4. 将Lite与带有Dlt645或Modbus协议的电表或PLC连接
+5. 下载[调试软件]对Lite进行调试
 
 ## Modbus功能码
 
