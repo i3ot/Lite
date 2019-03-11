@@ -12,14 +12,16 @@ JSON标识 | 英语注释 | 中文注释 | 类型 |备注
 **ta** | toAddress | 存储本地Lite的地址 | 字符串 |
 **dadd** | DeviceAddress | 读取设备的地址 | 字符串 | ModbusTCP:DeviceAddress Dlt645:12位编码
 **s** | Status_Code | 通讯状态 | 整型 | OK:200 Erorr:400
+**num** | Package_Count | 分包后包顺序的标识 | 整型 | 1:第一个包 -1:最后一个包 -2:只有一个包
+**count** | multiple | Modbus地址后面连续几个 | 整型 | 相当于40001:5里面的5
 
 ## 状态码标识(Function_Code, "fc")
 
-标识 | 英语注释 | 中文注释 | 返回状态码OK | 返回状态码Error | 备注 
+标识 | 英语注释 | 中文注释 | 状态码OK | 状态码Error | 备注
 :---|:---|:---|:---|:---|:---
 sf|Save_Flash|存入Lite设备Flash|203|403
 gd|Get_Device|读取目标设备地址|211|411
-gv|Get_Value|读取目标设备寄存器或线圈的值|212|412
+gv|Get_Value|读取目标设备寄存器或线圈的值|212|412or421|421为Lite无法连接目标设备
 pv|Post_Value|写入目标设备寄存器或线圈的值|213|413
 pa|Post_Address|新增目标设备寄存器或线圈的地址|214|414
 pd|Post_Device|新增目标设备地址|215|415
@@ -27,6 +29,7 @@ ma|Modify_Address|修改目标设备寄存器或线圈的地址|216|416
 md|Modify_Device|修改目标设备地址|217|417
 da|Delete_Address|删除目标设备寄存器或线圈的地址|218|418
 dd|Delete_Device|删除目标设备|219|419
+di|Device_initialise|初始化/读取Lite设备上所有信息|219|419
 
 ## 通用报文格式(JSON)
 
@@ -44,27 +47,63 @@ dd|Delete_Device|删除目标设备|219|419
 {"s":"203"}，{"s":"403"}
 ```
 
+* 初始化/将所有Lite已存的设备信息读出（上位机发送到Lite）
+
+```json
+{"fc":"Function_Code",  "dt":"Device_Type"}
+{"fc":"di", "dt":1}
+```
+
+* 初始化/将所有Lite已存的设备信息读出（Lite发送到上位机）
+
+```json
+{
+  "did": "Device_Unique_id",
+  "dadd": "DeviceAddress",
+  "num": "Package_Count",
+  "data": [
+    {
+      "id": "Unique_id",
+      "ta": "toAddress",
+      "count": "mutiple"
+    }
+  ]
+}
+{
+  "did": "1001",
+  "dadd": "20181234554321",
+  "num": 1,
+  "data": [
+    {
+      "id": 0001,
+      "ta": "40011",
+      "count": "2"
+    }
+  ]
+}
+```
+
 ## Dlt645设备报文格式(JSON)
 
 * 设备新增（上位机发送到Lite）
 
 ```json
 {"fc":"Function_Code", "dt":"Device_Type", "dadd":"DeviceAddress"}
-{"fc":"pd", "dt":"1", "dadd":"20188888888888"}
+{"fc":"pd", "dt":1, "dadd":"20188888888888"}
 ```
 
 * 设备新增（Lite发送到上位机）
 
 ```json
 {"s":"Status_Code",  "did":"Device_Unique_id"}
-{"s":"215",  "did":"1001"}，{"s":"415"}
+{"s":"215",  "did":1001}，{"s":"415"}
 ```
 
 * 设备修改（上位机发送到Lite）
 
 ```json
 {"fc":"Function_Code", "dt":"Device_Type", "did":"Device_Unique_id", "dadd":"DeviceAddress"}
-{"fc":"md", "dt":"1", "did":"1001", "dadd":"20187777777777"}
+{"fc":"md", "dt":1, "did":1001, "dadd":"20187777777777"}
 ```
 
 * 设备修改（Lite发送到上位机）
@@ -78,10 +117,11 @@ dd|Delete_Device|删除目标设备|219|419
 
 ```json
 {"fc":"Function_Code", "dt":"Device_Type", "did":"Device_Unique_id"}
-{"fc":"dd", "dt":"1", "did":"1001"}
+{"fc":"dd", "dt":1, "did":1001}
 ```
 
 * 设备删除（Lite发送到上位机）
+
 ```json
 {"s":"Status_Code"}
 {"s":"219"}，{"s":"419"}
@@ -91,7 +131,7 @@ dd|Delete_Device|删除目标设备|219|419
 
 ```json
 {"fc":"Function_Code", "dt":"Device_Type", "did":"Device_Unique_id"}
-{"fc":"gd", "dt":"1", "did":"-1"}
+{"fc":"gd", "dt":1, "did":-1}
 ```
 
 * 设备读取（Lite发送到上位机）
@@ -118,21 +158,21 @@ dd|Delete_Device|删除目标设备|219|419
 
 ```json
 {"fc":"Function_Code", "dt":"Device_Type", "did":"Device_Unique_id", "fa":"fromAddress"}
-{"fc":"pa", "dt":"1", "did":"1001", "fa":"0x02010100"}
+{"fc":"pa", "dt":1, "did":1001, "fa":"0x02010100"}
 ```
 
 * 地址新增（Lite发送到上位机）
 
 ```json
 {"s":"Status_Code", "id":"Unique_id", "ta":"toAddress"}
-{"s":"214", "id":"0001", "ta":"30001:2"}，{"s":"414"}
+{"s":"214", "id":0001, "ta":"30001:2"}，{"s":"414"}
 ```
 
 * 地址修改（上位机发送到Lite）
 
 ```json
 {"fc":"Function_Code", "dt":"Device_Type", "did":"Device_Unique_id", "id":"Unique_id", "fa":"fromAddress"}
-{"fc":"ma", "dt":"1", "did":"1001", "id":"0001", "fa":"0x02020100"}
+{"fc":"ma", "dt":1, "did":1001, "id":0001, "fa":"0x02020100"}
 ```
 
 * 地址修改（Lite发送到上位机）
@@ -146,7 +186,7 @@ dd|Delete_Device|删除目标设备|219|419
 
 ```json
 {"fc":"Function_Code", "dt":"Device_Type", "did":"Device_Unique_id", "id":"Unique_id"}
-{"fc":"da", "dt":"1", "did":"1001", "id":"0001"}
+{"fc":"da", "dt":1, "did":1001, "id":0001}
 ```
 
 * 地址删除（Lite发送到上位机）
@@ -160,7 +200,7 @@ dd|Delete_Device|删除目标设备|219|419
 
 ```json
 {"fc":"Function_Code", "dt":"Device_Type", "did":"Device_Unique_id"}
-{"fc":"gv", "dt":"1", "did":"1001"}
+{"fc":"gv", "dt":1, "did":1001}
 ```
 
 * 值读取（Lite发送到上位机）
@@ -181,13 +221,13 @@ dd|Delete_Device|删除目标设备|219|419
   "s": "212",
   "data": [
     {
-      "id": "0001",
+      "id": 0001,
       "fa": "0x02010100",
       "ta": "30001:2",
       "v": ["0f16", "0f17"]
     },
     {
-      "id": "0002",
+      "id": 0002,
       "fa": "0x02020100",
       "ta": "30003:2",
       "v": ["0f16", "0f07"]
@@ -202,21 +242,21 @@ dd|Delete_Device|删除目标设备|219|419
 
 ```json
 {"fc":"Function_Code", "dt":"Device_Type", "dadd":"DeviceAddress"}
-{"fc":"pd", "dt":"2", "dadd":"192.168.0.77:5002:1"}
+{"fc":"pd", "dt":2, "dadd":"192.168.0.77:5002:1"}
 ```
 
 * 设备新增（Lite发送到上位机）
 
 ```json
 {"s":"Status_Code",  "did":"Device_Unique_id"}
-{"s":"215",  "did":"2001"}，{"s":"415"}
+{"s":"215",  "did":2001}，{"s":"415"}
 ```
 
 * 设备修改（上位机发送到Lite）
 
 ```json
 {"fc":"Function_Code", "dt":"Device_Type", "did":"Device_Unique_id", "dadd":"DeviceAddress"}
-{"fc":"md", "dt":"2", "did":"2001", "dadd":"192.168.0.99:5002:2"}
+{"fc":"md", "dt":2, "did":2001, "dadd":"192.168.0.99:5002:2"}
 ```
 
 * 设备修改（Lite发送到上位机）
@@ -230,7 +270,7 @@ dd|Delete_Device|删除目标设备|219|419
 
 ```json
 {"fc":"Function_Code", "did":"Device_Unique_id"}
-{"fc":"dd", "dt":"2", "did":"2001"}
+{"fc":"dd", "dt":2, "did":2001}
 ```
 
 * 设备删除（Lite发送到上位机）
@@ -244,7 +284,7 @@ dd|Delete_Device|删除目标设备|219|419
 
 ```json
 {"fc":"Function_Code", "dt":"Device_Type", "did":"Device_Unique_id"}
-{"fc":"gd", "dt":"2", "did":"-1"}
+{"fc":"gd", "dt":2, "did":-1}
 ```
 
 * 设备读取（Lite发送到上位机）
@@ -270,21 +310,21 @@ dd|Delete_Device|删除目标设备|219|419
 
 ```json
 {"fc":"Function_Code", "dt":"Device_Type", "did":"Device_Unique_id", "fa":"fromAddress"}
-{"fc":"pa", "dt":"2", "did":"2001", "fa":"16:40001:2"}
+{"fc":"pa", "dt":2, "did":2001, "fa":"16:40001:2"}
 ```
 
 * 地址新增（Lite发送到上位机）
 
 ```json
 {"s":"Status_Code", "id":"Unique_id", "ta":"toAddress"}
-{"s":"214", "id":"0001", "ta":"41001:2"}，{"s":"414"}
+{"s":"214", "id":0001, "ta":"41001:2"}，{"s":"414"}
 ```
 
 * 地址修改（上位机发送到Lite）
 
 ```json
 {"fc":"Function_Code", "dt":"Device_Type", "did":"Device_Unique_id", "id":"Unique_id", "fa":"fromAddress"}
-{"fc":"ma", "dt":"2", "did":"2001", "id":"0001", "fa":"16:40011:2"}
+{"fc":"ma", "dt":2, "did":2001, "id":0001, "fa":"16:40011:2"}
 ```
 
 * 地址修改（Lite发送到上位机）
@@ -298,7 +338,7 @@ dd|Delete_Device|删除目标设备|219|419
 
 ```json
 {"fc":"Function_Code",  "dt":"Device_Type", "did":"Device_Unique_id", "id":"Unique_id"}
-{"fc":"da", "dt":"2", "did":"2001","id":"0001"}
+{"fc":"da", "dt":2, "did":2001,"id":0001}
 ```
 
 * 地址删除（Lite发送到上位机）
@@ -312,7 +352,7 @@ dd|Delete_Device|删除目标设备|219|419
 
 ```json
 {"fc":"Function_Code", "dt":"Device_Type", "did":"Device_Unique_id"}
-{"fc":"gv", "dt":"2", "did":"2001"}
+{"fc":"gv", "dt":2, "did":2001}
 ```
 
 * 值读取（Lite发送到上位机）
@@ -331,19 +371,19 @@ dd|Delete_Device|删除目标设备|219|419
   "s": "212",
   "data": [
     {
-      "id": "0001",
+      "id": 0001,
       "fa": "16:40100:2",
       "ta": "41100:2",
       "v": "135.22"
     },
     {
-      "id": "0002",
+      "id": 0002,
       "fa": "16:40102:2",
       "ta": "41102:2",
       "v": "157.64"
     }
   ]
-}，{"s":"412"}
+}，{"s":"412"},{"s":"421"}
 
 ```
 
@@ -351,7 +391,7 @@ dd|Delete_Device|删除目标设备|219|419
 
 ```json
 {"fc":"Function_Code", "dt":"Device_Type", "did":"Device_Unique_id",  "id":"Unique_id", "v":"value" }
-{"fc":"pv", "dt":"2", "did":"2001", "id":"0001","v": "0,1"}
+{"fc":"pv", "dt":2, "did":2001, "id":0001,"v": "0,1"}
 ```
 
 * 值更改（Lite发送到上位机）
@@ -371,13 +411,13 @@ dd|Delete_Device|删除目标设备|219|419
   "s": "213",
   "data": [
     {
-      "id": "0001",
+      "id": 0001,
       "fa": "15:00100:2",
       "ta": "01100:2",
       "v": "0,1"
     },
     {
-      "id": "0002",
+      "id": 0002,
       "fa": "16:40102:2",
       "ta": "41102:2",
       "v": "558.69,324.66"
@@ -388,11 +428,15 @@ dd|Delete_Device|删除目标设备|219|419
 
 -----------------------------------
 
+## 固件升级
+
+请向客服咨询有关最新固件的下载地址和更新方法。
+
 ## 使用方法
 
-1. 将上位机的IP设为[192.168.0.xxx]，将上位机的网口与Lite的网口通过网线直联
-2. 上位机浏览器打开[192.168.0.26]，输入密码进入Lite的初始化网页
-3. 修改Lite的IP地址、Modbus设置以及MQTT设置等
+1. 将上位机的IP设为**192.168.0.xxx**，将上位机的网口与Lite的网口通过网线**直联**
+2. 上位机浏览器打开**192.168.0.37**，输入密码进入Lite的初始化网页，**如不正确请向客服咨询**
+3. 修改Lite的IP地址及端口号、Modbus设置以及MQTT设置等
 4. 将Lite与带有Dlt645或Modbus协议的电表或PLC连接
 5. 下载[调试软件]对Lite进行调试
 
